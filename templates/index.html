@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Weekly Digest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #efe9dd;
+      --ink: #20241f;
+      --ink-soft: #5c6157;
+      --rule: #c9c0aa;
+      --signal: #2f5d50;
+      --signal-dim: #d8e3de;
+      --accent-red: #a13d2e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'IBM Plex Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .sheet {
+      width: 100%;
+      max-width: 660px;
+      border: 1px solid var(--rule);
+      background: #f7f4ec;
+      padding: 44px 40px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    }
+
+    .masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 3px double var(--ink);
+      padding-bottom: 14px;
+      margin-bottom: 8px;
+    }
+
+    .masthead .issue {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    h1 {
+      font-family: 'Source Serif 4', serif;
+      font-weight: 700;
+      font-size: 38px;
+      line-height: 1.05;
+      margin: 18px 0 6px;
+      letter-spacing: -0.01em;
+    }
+
+    .tagline {
+      font-family: 'Source Serif 4', serif;
+      font-style: italic;
+      color: var(--ink-soft);
+      font-size: 16px;
+      margin: 0 0 26px;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--ink-soft);
+      margin-bottom: 14px;
+    }
+
+    .field-row label {
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .field-row input[type="number"] {
+      width: 56px;
+      padding: 7px 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      border: 1px solid var(--rule);
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    .field-row input[type="text"] {
+      flex: 1;
+      padding: 7px 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      border: 1px solid var(--rule);
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    .field-row input::placeholder {
+      color: #9aa095;
+    }
+
+    .feeds-panel {
+      border: 1px dashed var(--rule);
+      padding: 16px;
+      margin-bottom: 24px;
+      background: rgba(239, 233, 221, 0.4);
+    }
+
+    .feeds-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--ink-soft);
+    }
+
+    .feed-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .feed-pill {
+      background: var(--signal-dim);
+      color: var(--signal);
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .feed-pill .remove-btn {
+      cursor: pointer;
+      font-weight: bold;
+      color: var(--accent-red);
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    .feed-pill .remove-btn:hover {
+      opacity: 0.8;
+    }
+
+    .add-feed-form {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .add-feed-form input {
+      padding: 6px 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      border: 1px solid var(--rule);
+      background: var(--paper);
+    }
+
+    .add-feed-form input.name-input { width: 35%; }
+    .add-feed-form input.url-input { flex: 1; }
+
+    .btn-secondary {
+      padding: 6px 12px;
+      background: var(--ink-soft);
+      color: #f7f4ec;
+      border: none;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-secondary:hover {
+      background: var(--ink);
+    }
+
+    button.btn-primary {
+      width: 100%;
+      padding: 15px 20px;
+      background: var(--signal);
+      color: #f7f4ec;
+      border: none;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    button.btn-primary:hover { background: #244a40; }
+    button.btn-primary:disabled { background: #9aa39c; cursor: wait; }
+
+    #status {
+      margin-top: 22px;
+      font-size: 13px;
+      line-height: 1.6;
+      min-height: 1.6em;
+    }
+
+    #status.idle { color: var(--ink-soft); }
+    #status.working { color: var(--ink-soft); }
+    #status.done { color: var(--signal); }
+    #status.error { color: var(--accent-red); }
+
+    #status a {
+      color: var(--signal);
+      font-weight: 500;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .signature {
+      margin-top: 30px;
+      padding-top: 18px;
+      border-top: 1px solid var(--rule);
+      font-size: 11px;
+      color: var(--ink-soft);
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="masthead">
+      <span class="issue">Vol. 1 &middot; Configurable Digest</span>
+      <span class="issue" id="today"></span>
+    </div>
+
+    <h1>AI Weekly Digest</h1>
+    <p class="tagline">Signal, extracted from a week of AI &amp; ML noise.</p>
+
+    <div class="form-group">
+      <div class="field-row">
+        <label for="days">Look back</label>
+        <input type="number" id="days" value="7" min="1" max="30">
+        <label for="days">days</label>
+      </div>
+
+      <div class="field-row">
+        <label for="keywords">Keywords</label>
+        <input type="text" id="keywords" placeholder="e.g. agents, open-source, policy (optional)">
+      </div>
+    </div>
+
+    <!-- Feeds Manager Panel -->
+    <div class="feeds-panel">
+      <div class="feeds-header">
+        <span>Active RSS Sources</span>
+        <span id="feed-count">0 sources</span>
+      </div>
+
+      <div id="feed-pills" class="feed-pills">
+        <!-- Dynamic Feed Pills -->
+      </div>
+
+      <form onsubmit="handleAddFeed(event)" class="add-feed-form">
+        <input type="text" id="new-feed-name" class="name-input" placeholder="Source Name" required>
+        <input type="url" id="new-feed-url" class="url-input" placeholder="https://example.com/rss.xml" required>
+        <button type="submit" class="btn-secondary">+ Add</button>
+      </form>
+    </div>
+
+    <button id="generate-btn" class="btn-primary" onclick="generateDigest()">Generate Digest</button>
+
+    <div id="status" class="idle">Pulls fresh articles from active feeds, summarizes with Claude, and compiles PDF.</div>
+
+    <div class="signature">
+      <span>fetch &rarr; filter &rarr; summarize &rarr; compile</span>
+      <span>PDF output</span>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('today').textContent = new Date().toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    async function loadFeeds() {
+      try {
+        const res = await fetch('/api/feeds');
+        const data = await res.json();
+        if (data.success) {
+          renderFeeds(data.feeds);
+        }
+      } catch (err) {
+        console.error('Failed to load feeds:', err);
+      }
+    }
+
+    function renderFeeds(feeds) {
+      const pillsContainer = document.getElementById('feed-pills');
+      const countLabel = document.getElementById('feed-count');
+      const entries = Object.entries(feeds);
+      
+      countLabel.textContent = `${entries.length} source${entries.length === 1 ? '' : 's'}`;
+      pillsContainer.innerHTML = '';
+
+      if (entries.length === 0) {
+        pillsContainer.innerHTML = '<span style="font-size: 11px; color: var(--ink-soft);">No RSS sources configured. Add one below.</span>';
+        return;
+      }
+
+      entries.forEach(([name, url]) => {
+        const pill = document.createElement('div');
+        pill.className = 'feed-pill';
+        pill.innerHTML = `
+          <span title="${url}">${name}</span>
+          <span class="remove-btn" title="Remove source" onclick="handleDeleteFeed('${encodeURIComponent(name)}')">&times;</span>
+        `;
+        pillsContainer.appendChild(pill);
+      });
+    }
+
+    async function handleAddFeed(e) {
+      e.preventDefault();
+      const nameInput = document.getElementById('new-feed-name');
+      const urlInput = document.getElementById('new-feed-url');
+
+      try {
+        const res = await fetch('/api/feeds', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: nameInput.value, url: urlInput.value })
+        });
+        const data = await res.json();
+        if (data.success) {
+          renderFeeds(data.feeds);
+          nameInput.value = '';
+          urlInput.value = '';
+        } else {
+          alert(data.error || 'Failed to add feed.');
+        }
+      } catch (err) {
+        alert('Error adding feed: ' + err.message);
+      }
+    }
+
+    async function handleDeleteFeed(encodedName) {
+      const name = decodeURIComponent(encodedName);
+      if (!confirm(`Remove source "${name}"?`)) return;
+
+      try {
+        const res = await fetch('/api/feeds/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (data.success) {
+          renderFeeds(data.feeds);
+        } else {
+          alert(data.error || 'Failed to delete feed.');
+        }
+      } catch (err) {
+        alert('Error deleting feed: ' + err.message);
+      }
+    }
+
+    async function generateDigest() {
+      const btn = document.getElementById('generate-btn');
+      const status = document.getElementById('status');
+      const days = document.getElementById('days').value;
+      const keywords = document.getElementById('keywords').value;
+
+      btn.disabled = true;
+      status.className = 'working';
+      status.textContent = 'Fetching articles and summarizing... this can take a moment.';
+
+      try {
+        const res = await fetch('/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `days=${encodeURIComponent(days)}&keywords=${encodeURIComponent(keywords)}`
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          status.className = 'done';
+          status.innerHTML = `Done &mdash; ${data.article_count} article(s) compiled. <a href="${data.download_url}">Download the PDF</a>`;
+        } else {
+          throw new Error(data.error || 'Something went wrong.');
+        }
+      } catch (err) {
+        status.className = 'error';
+        status.textContent = `Failed: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // Load active feeds on page init
+    loadFeeds();
+  </script>
+</body>
+</html>
