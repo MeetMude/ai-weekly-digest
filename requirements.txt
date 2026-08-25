@@ -6,3 +6,4 @@ duckduckgo_search>=8.0.0
 ddgs>=9.0.0
 Flask-APScheduler>=1.13.0
 python-dotenv
+google-generativeai
