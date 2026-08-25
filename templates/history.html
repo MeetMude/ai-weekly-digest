@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digest History — Universal News Digest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #efe9dd;
+      --ink: #20241f;
+      --ink-soft: #5c6157;
+      --rule: #c9c0aa;
+      --signal: #2f5d50;
+      --signal-dim: #d8e3de;
+      --accent-red: #a13d2e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'IBM Plex Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 36px 24px;
+    }
+
+    .sheet {
+      width: 100%;
+      max-width: 900px;
+      border: 1px solid var(--rule);
+      background: #f7f4ec;
+      padding: 44px 40px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    }
+
+    .masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 3px double var(--ink);
+      padding-bottom: 14px;
+      margin-bottom: 8px;
+    }
+
+    .masthead .issue {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .nav-link {
+      color: var(--signal);
+      text-decoration: underline;
+      font-size: 12px;
+    }
+
+    h1 {
+      font-family: 'Source Serif 4', serif;
+      font-weight: 700;
+      font-size: 36px;
+      line-height: 1.05;
+      margin: 18px 0 6px;
+      letter-spacing: -0.01em;
+    }
+
+    .tagline {
+      font-family: 'Source Serif 4', serif;
+      font-style: italic;
+      color: var(--ink-soft);
+      font-size: 15px;
+      margin: 0 0 24px;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 20px;
+    }
+
+    .history-table th {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 2px solid var(--ink);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: var(--ink-soft);
+    }
+
+    .history-table td {
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--rule);
+      vertical-align: middle;
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 3px 6px;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-web { background: #d8e3de; color: #2f5d50; }
+    .badge-cli { background: #e3ded8; color: #5d482f; }
+    .badge-scheduled { background: #ded8e3; color: #472f5d; }
+
+    .topic-tag {
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .download-btn {
+      color: var(--signal);
+      font-weight: bold;
+      text-decoration: underline;
+    }
+
+    .empty-msg {
+      text-align: center;
+      padding: 30px;
+      color: var(--ink-soft);
+      font-style: italic;
+    }
+
+    .signature {
+      margin-top: 30px;
+      padding-top: 18px;
+      border-top: 1px solid var(--rule);
+      font-size: 11px;
+      color: var(--ink-soft);
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="masthead">
+      <span class="issue">Vol. 1 &middot; Archive Log</span>
+      <a href="/" class="nav-link">&larr; Back to Generator</a>
+    </div>
+
+    <h1>Digest History</h1>
+    <p class="tagline">Record of all past generated digests and report outputs.</p>
+
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Date & Time</th>
+          <th>Source</th>
+          <th>Topic</th>
+          <th>Lookback</th>
+          <th>Keywords</th>
+          <th>Articles</th>
+          <th>Download</th>
+        </tr>
+      </thead>
+      <tbody id="history-rows">
+        <tr>
+          <td colspan="7" class="empty-msg">Loading history records...</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="signature">
+      <span>sqlite3 storage &middot; persistent logs</span>
+      <span>Universal News Digest</span>
+    </div>
+  </div>
+
+  <script>
+    async function loadHistory() {
+      const tbody = document.getElementById('history-rows');
+      try {
+        const res = await fetch('/api/history');
+        const data = await res.json();
+
+        if (data.success && data.history.length > 0) {
+          tbody.innerHTML = '';
+          data.history.forEach(item => {
+            const tr = document.createElement('tr');
+            const sourceClass = item.source_trigger === 'web' ? 'badge-web' : (item.source_trigger === 'scheduled' ? 'badge-scheduled' : 'badge-cli');
+            const kwText = item.keywords ? item.keywords : '&mdash;';
+            const topicText = item.topic ? item.topic : 'AI and Machine Learning';
+            
+            tr.innerHTML = `
+              <td>${item.timestamp}</td>
+              <td><span class="badge ${sourceClass}">${item.source_trigger}</span></td>
+              <td><span class="topic-tag">${topicText}</span></td>
+              <td>${item.days_back} day(s)</td>
+              <td><code>${kwText}</code></td>
+              <td>${item.article_count}</td>
+              <td><a href="/download/${item.filename}" class="download-btn">Download PDF</a></td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No past digest records found.</td></tr>';
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-msg" style="color: var(--accent-red)">Error loading history: ${err.message}</td></tr>`;
+      }
+    }
+
+    loadHistory();
+  </script>
+</body>
+</html>

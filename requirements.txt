@@ -2,3 +2,6 @@ feedparser>=6.0
 reportlab>=4.0
 anthropic>=0.40
 flask>=3.0
+duckduckgo_search>=8.0.0
+ddgs>=9.0.0
+Flask-APScheduler>=1.13.0

@@ -44,17 +44,19 @@ def _build_styles():
     return styles
 
 
-def generate_pdf(articles: list[dict], output_path: str = "AI_Weekly_Digest.pdf") -> str:
+def generate_pdf(articles: list[dict], output_path: str = "AI_Weekly_Digest.pdf", topic: str = "AI and Machine Learning") -> str:
     """
     Build a PDF digest grouped by source, from a list of summarized articles.
 
     Args:
         articles: list of dicts with keys title, link, source, published, summary.
         output_path: where to write the PDF.
+        topic: user-defined topic string for header metadata.
 
     Returns:
         The output_path, for convenience.
     """
+    clean_topic = (topic or "").strip() or "AI and Machine Learning"
     styles = _build_styles()
     doc = SimpleDocTemplate(
         output_path, pagesize=letter,
@@ -63,16 +65,16 @@ def generate_pdf(articles: list[dict], output_path: str = "AI_Weekly_Digest.pdf"
     )
 
     story = []
-    story.append(Paragraph("AI Weekly Digest", styles["DigestTitle"]))
+    story.append(Paragraph(f"Weekly Digest: {clean_topic}", styles["DigestTitle"]))
     story.append(Paragraph(
-        f"Curated summary of the week's top AI/ML news &mdash; {date.today().strftime('%B %d, %Y')}",
+        f"Curated summary of top {clean_topic} news &mdash; {date.today().strftime('%B %d, %Y')}",
         styles["DigestSubtitle"]
     ))
     story.append(HRFlowable(width="100%", color=colors.HexColor("#dddddd")))
 
     if not articles:
         story.append(Spacer(1, 20))
-        story.append(Paragraph("No articles found for this period.", styles["ArticleSummary"]))
+        story.append(Paragraph(f"No articles found for '{clean_topic}' during this period.", styles["ArticleSummary"]))
     else:
         grouped = defaultdict(list)
         for article in articles:
@@ -90,3 +92,4 @@ def generate_pdf(articles: list[dict], output_path: str = "AI_Weekly_Digest.pdf"
 
     doc.build(story)
     return output_path
+

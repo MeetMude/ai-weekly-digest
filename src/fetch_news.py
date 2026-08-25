@@ -4,6 +4,12 @@ import feedparser
 from datetime import datetime, timedelta, timezone
 from time import mktime
 
+try:
+    from ddgs import DDGS
+except ImportError:
+    from duckduckgo_search import DDGS
+
+
 FEEDS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "feeds.json")
 
 DEFAULT_FEEDS = {
@@ -58,21 +64,70 @@ def _entry_published(entry) -> datetime:
     return datetime.now(timezone.utc)
 
 
-def fetch_articles(days_back: int = 7, keywords: list[str] | str = None, feeds: dict = None, max_per_feed: int = 8) -> list[dict]:
+def _fetch_from_rss_fallback(topic: str, days_back: int, kw_list: list[str], feeds: dict, max_per_feed: int) -> list[dict]:
+    """Fallback fetcher querying configured RSS feeds if DDGS yields no results."""
+    if feeds is None:
+        feeds = load_feeds()
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
+    articles = []
+    topic_keywords = [t.strip().lower() for t in topic.split() if len(t.strip()) > 3]
+
+    for source_name, feed_url in feeds.items():
+        try:
+            parsed = feedparser.parse(feed_url)
+            for entry in parsed.entries[:max_per_feed]:
+                published = _entry_published(entry)
+                if published < cutoff:
+                    continue
+
+                title = entry.get("title", "Untitled")
+                summary_raw = entry.get("summary", "")
+                search_text = f"{title} {summary_raw}".lower()
+
+                # Filter by topic keywords if topic is custom
+                if topic_keywords and not any(tk in search_text for tk in topic_keywords):
+                    continue
+
+                # Filter by keyword list if provided
+                if kw_list and not any(kw in search_text for kw in kw_list):
+                    continue
+
+                articles.append({
+                    "title": title,
+                    "link": entry.get("link", ""),
+                    "source": source_name,
+                    "published": published.strftime("%Y-%m-%d"),
+                    "summary_raw": summary_raw,
+                })
+        except Exception:
+            continue
+
+    return articles
+
+
+def fetch_news_for_topic(
+    topic: str = "AI and Machine Learning",
+    days_back: int = 7,
+    keywords: list[str] | str = None,
+    feeds: dict = None,
+    max_results: int = 15
+) -> list[dict]:
     """
-    Fetch recent articles from all configured RSS feeds.
+    Fetch real-time news articles on demand for any dynamic topic query using DuckDuckGo Search (DDGS),
+    falling back to RSS feeds if search returns no results or fails.
 
     Args:
-        days_back: only keep articles published within this many days.
-        keywords: string or list of keyword strings to filter articles (matches title or summary).
-        feeds: optional dict of {source_name: feed_url}. Defaults to stored feeds.json.
-        max_per_feed: cap on articles pulled from each single feed.
+        topic: The user-defined news topic (e.g. "Space Exploration", "Quantum Computing").
+        days_back: Lookback window in days.
+        keywords: Optional extra keywords string or list to filter articles.
+        feeds: Optional custom RSS feeds dict for fallback.
+        max_results: Maximum articles to fetch.
 
     Returns:
         List of dicts: {title, link, source, published, summary_raw}
     """
-    if feeds is None:
-        feeds = load_feeds()
+    clean_topic = (topic or "").strip() or "AI and Machine Learning"
 
     kw_list = []
     if isinstance(keywords, str):
@@ -80,39 +135,81 @@ def fetch_articles(days_back: int = 7, keywords: list[str] | str = None, feeds: 
     elif isinstance(keywords, list):
         kw_list = [str(k).strip().lower() for k in keywords if str(k).strip()]
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
     articles = []
 
-    for source_name, feed_url in feeds.items():
-        parsed = feedparser.parse(feed_url)
+    # 1. Primary Ingestion: DuckDuckGo Real-Time News Search
+    try:
+        ddgs = DDGS()
+        raw_news = list(ddgs.news(clean_topic, max_results=max_results))
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
 
-        for entry in parsed.entries[:max_per_feed]:
-            published = _entry_published(entry)
-            if published < cutoff:
+
+        for item in raw_news:
+            title = item.get("title", "Untitled")
+            body = item.get("body", "") or item.get("snippet", "")
+            url = item.get("url", "")
+            source = item.get("source", "Web Search")
+            pub_str = item.get("date", "")
+
+            pub_dt = None
+            if pub_str:
+                try:
+                    pub_dt = datetime.fromisoformat(pub_str.replace("Z", "+00:00"))
+                except Exception:
+                    pass
+
+            if pub_dt and pub_dt < cutoff:
                 continue
 
-            title = entry.get("title", "Untitled")
-            summary_raw = entry.get("summary", "")
+            published_fmt = pub_dt.strftime("%Y-%m-%d") if pub_dt else datetime.now().strftime("%Y-%m-%d")
 
             if kw_list:
-                search_text = f"{title} {summary_raw}".lower()
+                search_text = f"{title} {body}".lower()
                 if not any(kw in search_text for kw in kw_list):
                     continue
 
             articles.append({
                 "title": title,
-                "link": entry.get("link", ""),
-                "source": source_name,
-                "published": published.strftime("%Y-%m-%d"),
-                "summary_raw": summary_raw,
+                "link": url,
+                "source": source,
+                "published": published_fmt,
+                "summary_raw": body,
             })
+    except Exception as e:
+        print(f"Notice: DuckDuckGo news fetch error ({e}). Using RSS fallback...")
 
-    # Most recent first
+    # 2. Fallback Ingestion: Configured RSS feeds
+    if not articles:
+        articles = _fetch_from_rss_fallback(clean_topic, days_back, kw_list, feeds, max_results)
+
+    # Sort most recent first
     articles.sort(key=lambda a: a["published"], reverse=True)
     return articles
 
 
+def fetch_articles(
+    days_back: int = 7,
+    keywords: list[str] | str = None,
+    feeds: dict = None,
+    max_per_feed: int = 8,
+    topic: str = "AI and Machine Learning"
+) -> list[dict]:
+    """Backward-compatible wrapper for fetch_news_for_topic."""
+    return fetch_news_for_topic(
+        topic=topic,
+        days_back=days_back,
+        keywords=keywords,
+        feeds=feeds,
+        max_results=max_per_feed * 3
+    )
+
+
 if __name__ == "__main__":
-    for article in fetch_articles():
-        print(f"[{article['source']}] {article['title']} ({article['published']})")
+    test_topic = "Space Exploration"
+    print(f"Testing news fetch for topic: '{test_topic}'")
+    res = fetch_news_for_topic(test_topic, days_back=7)
+    print(f"Retrieved {len(res)} articles.")
+    for art in res[:3]:
+        print(f"[{art['source']}] {art['title']} ({art['published']})")
+
 

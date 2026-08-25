@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Weekly Digest</title>
+  <title>Universal News Digest & Scheduler</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -28,12 +28,12 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 32px 24px;
     }
 
     .sheet {
       width: 100%;
-      max-width: 660px;
+      max-width: 760px;
       border: 1px solid var(--rule);
       background: #f7f4ec;
       padding: 44px 40px;
@@ -59,7 +59,7 @@
     h1 {
       font-family: 'Source Serif 4', serif;
       font-weight: 700;
-      font-size: 38px;
+      font-size: 36px;
       line-height: 1.05;
       margin: 18px 0 6px;
       letter-spacing: -0.01em;
@@ -71,6 +71,16 @@
       color: var(--ink-soft);
       font-size: 16px;
       margin: 0 0 26px;
+    }
+
+    .section-title {
+      font-family: 'Source Serif 4', serif;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: 6px;
+      margin: 32px 0 16px;
+      color: var(--ink);
     }
 
     .form-group {
@@ -89,10 +99,11 @@
     .field-row label {
       letter-spacing: 0.03em;
       white-space: nowrap;
+      min-width: 120px;
     }
 
     .field-row input[type="number"] {
-      width: 56px;
+      width: 60px;
       padding: 7px 8px;
       font-family: 'IBM Plex Mono', monospace;
       font-size: 13px;
@@ -101,9 +112,12 @@
       color: var(--ink);
     }
 
-    .field-row input[type="text"] {
+    .field-row input[type="text"],
+    .field-row input[type="email"],
+    .field-row input[type="time"],
+    .field-row select {
       flex: 1;
-      padding: 7px 10px;
+      padding: 8px 10px;
       font-family: 'IBM Plex Mono', monospace;
       font-size: 12px;
       border: 1px solid var(--rule);
@@ -115,19 +129,19 @@
       color: #9aa095;
     }
 
-    .feeds-panel {
+    .feeds-panel, .schedules-panel {
       border: 1px dashed var(--rule);
       padding: 16px;
       margin-bottom: 24px;
       background: rgba(239, 233, 221, 0.4);
     }
 
-    .feeds-header {
+    .panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
-      font-size: 12px;
+      font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--ink-soft);
@@ -157,10 +171,6 @@
       color: var(--accent-red);
       font-size: 13px;
       line-height: 1;
-    }
-
-    .feed-pill .remove-btn:hover {
-      opacity: 0.8;
     }
 
     .add-feed-form {
@@ -193,13 +203,11 @@
       white-space: nowrap;
     }
 
-    .btn-secondary:hover {
-      background: var(--ink);
-    }
+    .btn-secondary:hover { background: var(--ink); }
 
     button.btn-primary {
       width: 100%;
-      padding: 15px 20px;
+      padding: 14px 20px;
       background: var(--signal);
       color: #f7f4ec;
       border: none;
@@ -209,13 +217,48 @@
       text-transform: uppercase;
       cursor: pointer;
       transition: background 0.15s ease;
+      margin-top: 8px;
     }
 
     button.btn-primary:hover { background: #244a40; }
     button.btn-primary:disabled { background: #9aa39c; cursor: wait; }
 
+    .btn-danger {
+      background: var(--accent-red);
+      color: #f7f4ec;
+      border: none;
+      font-size: 10px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace;
+      text-transform: uppercase;
+    }
+    .btn-danger:hover { opacity: 0.85; }
+
+    .schedules-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    .schedules-table th {
+      text-align: left;
+      padding: 8px;
+      border-bottom: 2px solid var(--ink);
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .schedules-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--rule);
+      vertical-align: middle;
+    }
+
     #status {
-      margin-top: 22px;
+      margin-top: 18px;
       font-size: 13px;
       line-height: 1.6;
       min-height: 1.6em;
@@ -230,11 +273,10 @@
       color: var(--signal);
       font-weight: 500;
       text-decoration: underline;
-      text-underline-offset: 2px;
     }
 
     .signature {
-      margin-top: 30px;
+      margin-top: 32px;
       padding-top: 18px;
       border-top: 1px solid var(--rule);
       font-size: 11px;
@@ -247,18 +289,29 @@
 <body>
   <div class="sheet">
     <div class="masthead">
-      <span class="issue">Vol. 1 &middot; Configurable Digest</span>
-      <span class="issue" id="today"></span>
+      <span class="issue">Vol. 1 &middot; News &amp; Scheduler Suite</span>
+      <div>
+        <a href="/history" style="color: var(--signal); text-decoration: underline; font-size: 12px; margin-right: 12px;">History Log &rarr;</a>
+        <span class="issue" id="today"></span>
+      </div>
     </div>
 
-    <h1>AI Weekly Digest</h1>
-    <p class="tagline">Signal, extracted from a week of AI &amp; ML noise.</p>
+    <h1>Universal News Digest</h1>
+    <p class="tagline">On-demand search &amp; automated background digest scheduler.</p>
+
+    <!-- SECTION 1: ON-DEMAND DIGEST GENERATOR -->
+    <div class="section-title">1. On-Demand Digest Generator</div>
 
     <div class="form-group">
       <div class="field-row">
+        <label for="topic">Topic / Subject</label>
+        <input type="text" id="topic" value="AI and Machine Learning" placeholder="e.g. Space Exploration, Stock Market, Quantum Computing...">
+      </div>
+
+      <div class="field-row">
         <label for="days">Look back</label>
         <input type="number" id="days" value="7" min="1" max="30">
-        <label for="days">days</label>
+        <label for="days" style="min-width: auto;">days</label>
       </div>
 
       <div class="field-row">
@@ -269,8 +322,8 @@
 
     <!-- Feeds Manager Panel -->
     <div class="feeds-panel">
-      <div class="feeds-header">
-        <span>Active RSS Sources</span>
+      <div class="panel-header">
+        <span>Fallback RSS Sources</span>
         <span id="feed-count">0 sources</span>
       </div>
 
@@ -285,13 +338,93 @@
       </form>
     </div>
 
-    <button id="generate-btn" class="btn-primary" onclick="generateDigest()">Generate Digest</button>
+    <button id="generate-btn" class="btn-primary" onclick="generateDigest()">Generate Digest Now</button>
 
-    <div id="status" class="idle">Pulls fresh articles from active feeds, summarizes with Claude, and compiles PDF.</div>
+    <div id="status" class="idle">Fetches real-time news for your topic, summarizes with Claude, and compiles PDF.</div>
+
+    <!-- SECTION 2: AUTOMATED DIGEST SCHEDULER -->
+    <div class="section-title">2. Schedule Automated Digest</div>
+
+    <form onsubmit="handleScheduleSubmit(event)" class="form-group">
+      <div class="field-row">
+        <label for="schedule_email">Recipient Email</label>
+        <input type="email" id="schedule_email" name="recipient_email" placeholder="subscriber@example.com" required>
+      </div>
+
+      <div class="field-row">
+        <label for="schedule_topic">Topic / Subject</label>
+        <input type="text" id="schedule_topic" name="schedule_topic" value="AI and Machine Learning" placeholder="e.g. Space Exploration, Formula 1..." required>
+      </div>
+
+      <div class="field-row">
+        <label for="schedule_frequency">Frequency</label>
+        <select id="schedule_frequency" name="frequency" onchange="handleFrequencyChange()">
+          <option value="daily">Every Day</option>
+          <option value="alternate_days">Alternate Days (Every 2 days)</option>
+          <option value="interval_days">Custom Gap (Every N days)</option>
+          <option value="weekly">Once a Week</option>
+        </select>
+      </div>
+
+      <div class="field-row" id="interval_gap_container" style="display: none;">
+        <label for="schedule_interval_gap">Interval Gap</label>
+        <select id="schedule_interval_gap" name="interval_gap">
+          <option value="3">Every 3 Days</option>
+          <option value="4">Every 4 Days</option>
+          <option value="5">Every 5 Days</option>
+          <option value="6">Every 6 Days</option>
+        </select>
+      </div>
+
+      <div class="field-row" id="day_of_week_container" style="display: none;">
+        <label for="schedule_day_of_week">Day of Week</label>
+        <select id="schedule_day_of_week" name="day_of_week">
+          <option value="mon">Monday</option>
+          <option value="tue">Tuesday</option>
+          <option value="wed">Wednesday</option>
+          <option value="thu">Thursday</option>
+          <option value="fri">Friday</option>
+          <option value="sat">Saturday</option>
+          <option value="sun">Sunday</option>
+        </select>
+      </div>
+
+      <div class="field-row">
+        <label for="schedule_run_time">Run Time (HH:MM)</label>
+        <input type="time" id="schedule_run_time" name="run_time" value="09:00" required>
+      </div>
+
+      <button type="submit" class="btn-primary" style="background: #395269;">+ Save &amp; Register Scheduled Job</button>
+    </form>
+
+    <!-- ACTIVE SCHEDULES TABLE PANEL -->
+    <div class="schedules-panel">
+      <div class="panel-header">
+        <span>Active Scheduled Jobs</span>
+        <span id="schedule-count">0 active jobs</span>
+      </div>
+
+      <table class="schedules-table">
+        <thead>
+          <tr>
+            <th>Topic</th>
+            <th>Recipient Email</th>
+            <th>Frequency / Schedule</th>
+            <th>Run Time</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="schedules-rows">
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--ink-soft); padding: 16px;">Loading scheduled jobs...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="signature">
-      <span>fetch &rarr; filter &rarr; summarize &rarr; compile</span>
-      <span>PDF output</span>
+      <span>apscheduler background &middot; smtplib email</span>
+      <span>Universal Digest &amp; Scheduler</span>
     </div>
   </div>
 
@@ -300,13 +433,20 @@
       year: 'numeric', month: 'long', day: 'numeric'
     });
 
+    function handleFrequencyChange() {
+      const freq = document.getElementById('schedule_frequency').value;
+      const gapContainer = document.getElementById('interval_gap_container');
+      const dayContainer = document.getElementById('day_of_week_container');
+
+      gapContainer.style.display = (freq === 'interval_days') ? 'flex' : 'none';
+      dayContainer.style.display = (freq === 'weekly') ? 'flex' : 'none';
+    }
+
     async function loadFeeds() {
       try {
         const res = await fetch('/api/feeds');
         const data = await res.json();
-        if (data.success) {
-          renderFeeds(data.feeds);
-        }
+        if (data.success) renderFeeds(data.feeds);
       } catch (err) {
         console.error('Failed to load feeds:', err);
       }
@@ -371,37 +511,129 @@
           body: JSON.stringify({ name })
         });
         const data = await res.json();
-        if (data.success) {
-          renderFeeds(data.feeds);
-        } else {
-          alert(data.error || 'Failed to delete feed.');
-        }
+        if (data.success) renderFeeds(data.feeds);
       } catch (err) {
         alert('Error deleting feed: ' + err.message);
+      }
+    }
+
+    async function loadSchedules() {
+      const tbody = document.getElementById('schedules-rows');
+      const countLabel = document.getElementById('schedule-count');
+      try {
+        const res = await fetch('/api/schedules');
+        const data = await res.json();
+        if (data.success) {
+          renderSchedules(data.schedules);
+        }
+      } catch (err) {
+        console.error('Error loading schedules:', err);
+      }
+    }
+
+    function renderSchedules(schedules) {
+      const tbody = document.getElementById('schedules-rows');
+      const countLabel = document.getElementById('schedule-count');
+      countLabel.textContent = `${schedules.length} active job${schedules.length === 1 ? '' : 's'}`;
+
+      if (!schedules || schedules.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--ink-soft); padding: 16px;">No active scheduled jobs. Use the form above to add one.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      schedules.forEach(job => {
+        let freqDesc = job.frequency;
+        if (job.frequency === 'daily') freqDesc = 'Every Day';
+        else if (job.frequency === 'alternate_days') freqDesc = 'Alternate Days (2d)';
+        else if (job.frequency === 'interval_days') freqDesc = `Every ${job.interval_gap} Days`;
+        else if (job.frequency === 'weekly') freqDesc = `Weekly (${(job.day_of_week || 'mon').toUpperCase()})`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${job.topic}</strong></td>
+          <td>${job.email}</td>
+          <td>${freqDesc}</td>
+          <td><code>${job.run_time}</code></td>
+          <td><button onclick="handleDeleteSchedule('${job.job_id}')" class="btn-danger">Cancel / Delete</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function handleScheduleSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('schedule_email').value;
+      const topic = document.getElementById('schedule_topic').value;
+      const frequency = document.getElementById('schedule_frequency').value;
+      const interval_gap = document.getElementById('schedule_interval_gap').value;
+      const day_of_week = document.getElementById('schedule_day_of_week').value;
+      const run_time = document.getElementById('schedule_run_time').value;
+
+      try {
+        const res = await fetch('/schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipient_email: email,
+            schedule_topic: topic,
+            frequency,
+            interval_gap,
+            day_of_week,
+            run_time
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Scheduled job created and registered successfully!');
+          renderSchedules(data.schedules);
+        } else {
+          alert(data.error || 'Failed to create schedule.');
+        }
+      } catch (err) {
+        alert('Error creating schedule: ' + err.message);
+      }
+    }
+
+    async function handleDeleteSchedule(jobId) {
+      if (!confirm('Cancel and delete this scheduled job?')) return;
+      try {
+        const res = await fetch(`/schedule/delete/${encodeURIComponent(jobId)}`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+        if (data.success) {
+          renderSchedules(data.schedules);
+        } else {
+          alert(data.error || 'Failed to delete schedule.');
+        }
+      } catch (err) {
+        alert('Error deleting schedule: ' + err.message);
       }
     }
 
     async function generateDigest() {
       const btn = document.getElementById('generate-btn');
       const status = document.getElementById('status');
+      const topic = document.getElementById('topic').value;
       const days = document.getElementById('days').value;
       const keywords = document.getElementById('keywords').value;
 
       btn.disabled = true;
       status.className = 'working';
-      status.textContent = 'Fetching articles and summarizing... this can take a moment.';
+      status.textContent = `Searching real-time news for "${topic}" and summarizing... this can take a moment.`;
 
       try {
         const res = await fetch('/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: `days=${encodeURIComponent(days)}&keywords=${encodeURIComponent(keywords)}`
+          body: `topic=${encodeURIComponent(topic)}&days=${encodeURIComponent(days)}&keywords=${encodeURIComponent(keywords)}`
         });
         const data = await res.json();
 
         if (data.success) {
           status.className = 'done';
-          status.innerHTML = `Done &mdash; ${data.article_count} article(s) compiled. <a href="${data.download_url}">Download the PDF</a>`;
+          status.innerHTML = `Done &mdash; ${data.article_count} article(s) compiled for "${data.topic}". <a href="${data.download_url}">Download the PDF</a>`;
         } else {
           throw new Error(data.error || 'Something went wrong.');
         }
@@ -413,8 +645,9 @@
       }
     }
 
-    // Load active feeds on page init
+    // Load feeds & active schedules on page init
     loadFeeds();
+    loadSchedules();
   </script>
 </body>
 </html>

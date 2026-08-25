@@ -2,18 +2,19 @@
 summarize.py
 
 Turns raw article snippets into short, clean summaries using an LLM
-(Claude, via the Anthropic API). Falls back gracefully if no API key
-is configured, so the pipeline never hard-crashes.
+(Google Gemini, via the google-generativeai API). Falls back gracefully
+if no API key is configured, so the pipeline never hard-crashes.
 """
 
 import os
 import re
-from anthropic import Anthropic
 
-client = None
-api_key = os.environ.get("ANTHROPIC_API_KEY")
+model = None
+api_key = os.environ.get("GEMINI_API_KEY")
 if api_key:
-    client = Anthropic(api_key=api_key)
+    import google.generativeai as genai
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-2.0-flash")
 
 
 def _strip_html(raw_html: str) -> str:
@@ -35,7 +36,7 @@ def summarize_article(title: str, raw_summary: str) -> str:
     """
     text = _strip_html(raw_summary)
 
-    if not client:
+    if not model:
         # No API key configured — just return the cleaned snippet, trimmed.
         return text[:220] + ("..." if len(text) > 220 else "")
 
@@ -47,13 +48,14 @@ def summarize_article(title: str, raw_summary: str) -> str:
         "Summary:"
     )
 
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=150,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    return response.content[0].text.strip()
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        # If the API call fails for any reason (rate limit, network, etc.),
+        # fall back to the raw snippet rather than crashing the whole pipeline.
+        print(f"Gemini summarization failed, using fallback: {e}")
+        return text[:220] + ("..." if len(text) > 220 else "")
 
 
 def summarize_articles(articles: list[dict]) -> list[dict]:
