@@ -1,8 +1,8 @@
 # AI Weekly Digest
 
-A clean, customizable pipeline that pulls the past week's AI/ML news from curated RSS feeds, filters by keywords, summarizes each article with Claude (Anthropic API), logs every generation to a local SQLite database, and compiles everything into a PDF digest. Includes full web UI feed management, digest history archive, and automated email dispatch capabilities.
+A clean, customizable pipeline that pulls the past week's AI/ML news from curated RSS feeds, filters by keywords, summarizes each article with Gemini , logs every generation to a local SQLite database, and compiles everything into a PDF digest. Includes full web UI feed management, digest history archive, and automated email dispatch capabilities.
 
-> Inspired by [KalyanM45/Synapse-Daily](https://github.com/KalyanM45/Synapse-Daily), built as an expandable personal portfolio project.
+
 
 ---
 
