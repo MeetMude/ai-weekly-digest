@@ -38,7 +38,7 @@ from src.mailer import send_email_digest
 
 app = Flask(__name__)
 app.config['SCHEDULER_TIMEZONE'] = 'Asia/Kolkata'
-app.config["SCHEDULER_API_ENABLED"] = True
+app.config["SCHEDULER_API_ENABLED"] = False
 
 scheduler = APScheduler()
 scheduler.init_app(app)
@@ -108,16 +108,17 @@ def register_job_with_apscheduler(job_data: dict):
     interval_gap = job_data.get("interval_gap")
     day_of_week = job_data.get("day_of_week", "mon")
 
+    TZ = "Asia/Kolkata"
     if freq == "daily":
-        trigger = CronTrigger(hour=hour, minute=minute)
+        trigger = CronTrigger(hour=hour, minute=minute, timezone=TZ)
     elif freq == "alternate_days":
-        trigger = CronTrigger(day="*/2", hour=hour, minute=minute)
+        trigger = CronTrigger(day="*/2", hour=hour, minute=minute, timezone=TZ)
     elif freq == "interval_days" and interval_gap:
-        trigger = CronTrigger(day=f"*/{interval_gap}", hour=hour, minute=minute)
+        trigger = CronTrigger(day=f"*/{interval_gap}", hour=hour, minute=minute, timezone=TZ)
     elif freq == "weekly" and day_of_week:
-        trigger = CronTrigger(day_of_week=str(day_of_week).lower()[:3], hour=hour, minute=minute)
+        trigger = CronTrigger(day_of_week=str(day_of_week).lower()[:3], hour=hour, minute=minute, timezone=TZ)
     else:
-        trigger = CronTrigger(hour=hour, minute=minute)
+        trigger = CronTrigger(hour=hour, minute=minute, timezone=TZ)
 
     if scheduler.get_job(job_id):
         scheduler.remove_job(job_id)
@@ -128,7 +129,10 @@ def register_job_with_apscheduler(job_data: dict):
         args=[job_id],
         trigger=trigger,
         replace_existing=True,
+        misfire_grace_time=3600,
+        coalesce=True,
     )
+    print(f"[APScheduler] Registered {job_id}, next run: {scheduler.get_job(job_id).next_run_time}")
 
 
 def restore_all_scheduled_jobs():
@@ -310,6 +314,13 @@ def generate():
     })
 
 
+@app.route("/api/schedules/<job_id>/run", methods=["POST"])
+def run_now(job_id):
+    """Manually trigger a scheduled job immediately (for testing)."""
+    execute_automated_scheduled_digest(job_id)
+    return jsonify({"success": True})
+
+
 @app.route("/download/<path:filename>")
 def download(filename):
     """Serve a previously generated PDF for download."""
@@ -319,7 +330,7 @@ def download(filename):
         return send_from_directory(app.root_path, filename, as_attachment=True)
     return send_from_directory(GENERATED_DIR, filename, as_attachment=True)
 
+
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
