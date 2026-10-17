@@ -14,6 +14,8 @@ Usage:
 """
 
 import argparse
+from dotenv import load_dotenv
+load_dotenv()
 from src.fetch_news import fetch_news_for_topic, load_feeds, add_feed, remove_feed
 from src.summarize import summarize_articles
 from src.generate_pdf import generate_pdf
