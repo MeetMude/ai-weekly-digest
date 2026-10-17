@@ -1,95 +1,99 @@
 """
 generate_pdf.py
 
-Renders a list of summarized articles into a clean, shareable PDF digest.
+Renders summarized articles into a readable PDF briefing:
+topic overview -> key takeaways -> detailed story summaries.
 """
 
 from datetime import date
-from collections import defaultdict
+from xml.sax.saxutils import escape
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, HRFlowable, KeepTogether
 )
+
+from src.summarize import build_overview
 
 
 def _build_styles():
-    styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(
-        name="DigestTitle", parent=styles["Title"], fontSize=24, spaceAfter=4
-    ))
-    styles.add(ParagraphStyle(
-        name="DigestSubtitle", parent=styles["Normal"], fontSize=11,
-        textColor=colors.grey, spaceAfter=20
-    ))
-    styles.add(ParagraphStyle(
-        name="SectionHeading", parent=styles["Heading2"], fontSize=14,
-        spaceBefore=18, spaceAfter=8, textColor=colors.HexColor("#1a1a2e")
-    ))
-    styles.add(ParagraphStyle(
-        name="ArticleTitle", parent=styles["Heading3"], fontSize=12,
-        spaceBefore=10, spaceAfter=2
-    ))
-    styles.add(ParagraphStyle(
-        name="ArticleMeta", parent=styles["Normal"], fontSize=8,
-        textColor=colors.grey, spaceAfter=4
-    ))
-    styles.add(ParagraphStyle(
-        name="ArticleSummary", parent=styles["Normal"], fontSize=10,
-        leading=14, spaceAfter=6
-    ))
-    return styles
+    s = getSampleStyleSheet()
+    s.add(ParagraphStyle("DigestTitle", parent=s["Title"], fontSize=24, spaceAfter=10))
+    s.add(ParagraphStyle("DigestSubtitle", parent=s["Normal"], fontSize=11,
+                         textColor=colors.grey, spaceAfter=14))
+    s.add(ParagraphStyle("SectionHeading", parent=s["Heading2"], fontSize=15,
+                         spaceBefore=16, spaceAfter=8, textColor=colors.HexColor("#1a1a2e")))
+    s.add(ParagraphStyle("Body", parent=s["Normal"], fontSize=10.5, leading=15, spaceAfter=6))
+    s.add(ParagraphStyle("Point", parent=s["Normal"], fontSize=10, leading=14,
+                         leftIndent=16, bulletIndent=4, spaceAfter=3))
+    s.add(ParagraphStyle("ArticleTitle", parent=s["Heading3"], fontSize=12.5,
+                         spaceBefore=14, spaceAfter=2, textColor=colors.HexColor("#16213e")))
+    s.add(ParagraphStyle("ArticleMeta", parent=s["Normal"], fontSize=8.5,
+                         textColor=colors.grey, spaceAfter=5))
+    s.add(ParagraphStyle("ReadMore", parent=s["Normal"], fontSize=9,
+                         textColor=colors.HexColor("#1a5fb4"), spaceAfter=8))
+    return s
 
 
-def generate_pdf(articles: list[dict], output_path: str = "AI_Weekly_Digest.pdf", topic: str = "AI and Machine Learning") -> str:
+def _bullets(points, style):
+    return [Paragraph(escape(p), style, bulletText="•") for p in points]
+
+
+def generate_pdf(articles: list[dict], output_path: str = "AI_Weekly_Digest.pdf",
+                 topic: str = "AI and Machine Learning", overview=None) -> str:
     """
-    Build a PDF digest grouped by source, from a list of summarized articles.
-
-    Args:
-        articles: list of dicts with keys title, link, source, published, summary.
-        output_path: where to write the PDF.
-        topic: user-defined topic string for header metadata.
-
-    Returns:
-        The output_path, for convenience.
+    Build the PDF. `overview` is an optional (paragraph, [takeaways]) tuple;
+    if not given, it is generated automatically from the articles.
     """
     clean_topic = (topic or "").strip() or "AI and Machine Learning"
-    styles = _build_styles()
+    st = _build_styles()
     doc = SimpleDocTemplate(
         output_path, pagesize=letter,
         topMargin=0.75 * inch, bottomMargin=0.75 * inch,
-        leftMargin=0.75 * inch, rightMargin=0.75 * inch,
+        leftMargin=0.8 * inch, rightMargin=0.8 * inch,
     )
 
-    story = []
-    story.append(Paragraph(f"Weekly Digest: {clean_topic}", styles["DigestTitle"]))
-    story.append(Paragraph(
-        f"Curated summary of top {clean_topic} news &mdash; {date.today().strftime('%B %d, %Y')}",
-        styles["DigestSubtitle"]
-    ))
-    story.append(HRFlowable(width="100%", color=colors.HexColor("#dddddd")))
+    story = [
+        Paragraph(f"Weekly Digest: {escape(clean_topic)}", st["DigestTitle"]),
+        Paragraph(f"Your briefing on {escape(clean_topic)} &mdash; "
+                  f"{date.today().strftime('%B %d, %Y')}", st["DigestSubtitle"]),
+        HRFlowable(width="100%", color=colors.HexColor("#dddddd")),
+    ]
 
     if not articles:
-        story.append(Spacer(1, 20))
-        story.append(Paragraph(f"No articles found for '{clean_topic}' during this period.", styles["ArticleSummary"]))
-    else:
-        grouped = defaultdict(list)
-        for article in articles:
-            grouped[article["source"]].append(article)
+        story += [Spacer(1, 20),
+                  Paragraph(f"No articles found for '{escape(clean_topic)}' during this period.", st["Body"])]
+        doc.build(story)
+        return output_path
 
-        for source, items in grouped.items():
-            story.append(Paragraph(source, styles["SectionHeading"]))
-            for article in items:
-                story.append(Paragraph(article["title"], styles["ArticleTitle"]))
-                story.append(Paragraph(
-                    f"{article['published']} &middot; <link href='{article['link']}'>{article['link']}</link>",
-                    styles["ArticleMeta"]
-                ))
-                story.append(Paragraph(article["summary"], styles["ArticleSummary"]))
+    if overview is None:
+        overview = build_overview(clean_topic, articles)
+    overview_text, takeaways = overview
+    if overview_text:
+        story.append(Paragraph("The Big Picture", st["SectionHeading"]))
+        story.append(Paragraph(escape(overview_text), st["Body"]))
+    if takeaways:
+        story.append(Paragraph("Key Takeaways", st["SectionHeading"]))
+        story += _bullets(takeaways, st["Point"])
+
+    story.append(Paragraph("Top Stories", st["SectionHeading"]))
+    story.append(HRFlowable(width="100%", color=colors.HexColor("#dddddd")))
+
+    for a in articles:
+        block = [
+            Paragraph(escape(a["title"]), st["ArticleTitle"]),
+            Paragraph(f"{escape(str(a['source']))} &middot; {escape(str(a['published']))}", st["ArticleMeta"]),
+            Paragraph(escape(a.get("summary", "")), st["Body"]),
+        ]
+        block += _bullets(a.get("key_points", []), st["Point"])
+        if a.get("link"):
+            block.append(Paragraph(
+                f"<link href='{escape(a['link'], {chr(39): '&apos;'})}'>Read the full article &rarr;</link>",
+                st["ReadMore"]))
+        story.append(KeepTogether(block))
 
     doc.build(story)
     return output_path
-
