@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import feedparser
 from datetime import datetime, timedelta, timezone
 from time import mktime
@@ -106,6 +107,57 @@ def _fetch_from_rss_fallback(topic: str, days_back: int, kw_list: list[str], fee
     return articles
 
 
+# ---------------------------------------------------------------------------
+# Quality filter: skips pages that are not real news (betting tips, live-score
+# listings, TV guides...). Edit this list to add or remove words.
+# Phrases that appear in your topic are never filtered (e.g. topic "sports
+# betting" keeps betting articles).
+# ---------------------------------------------------------------------------
+JUNK_TITLE_PHRASES = [
+    "betting", "sportsbook", "casino", "promo code", "bonus code",
+    "dream11", "fantasy", "live score", "live scores", "fixtures",
+    "how to watch", "where to watch", "live stream", "live streaming",
+    "streaming today", "on tv", "tv schedule", "tv channel",
+]
+
+
+def _normalize_title(title: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", (title or "").lower()).strip()
+
+
+def _filter_articles(articles: list[dict], topic: str) -> list[dict]:
+    """Drop junk pages and duplicates. Never returns an empty list by accident."""
+    topic_lc = (topic or "").lower()
+    phrases = [p for p in JUNK_TITLE_PHRASES if p not in topic_lc]
+    junk_re = re.compile(r"\b(" + "|".join(re.escape(p) for p in phrases) + r")\b") if phrases else None
+
+    kept, seen_titles, seen_urls, dropped = [], set(), set(), []
+    for a in articles:
+        title = a.get("title", "")
+        norm = _normalize_title(title)
+        url_key = (a.get("link", "") or "").split("?")[0].rstrip("/")
+
+        if junk_re and junk_re.search(title.lower()):
+            dropped.append(title)
+            continue
+        if norm in seen_titles or (url_key and url_key in seen_urls):
+            dropped.append(title)
+            continue
+        seen_titles.add(norm)
+        if url_key:
+            seen_urls.add(url_key)
+        kept.append(a)
+
+    if dropped:
+        print(f"Filtered out {len(dropped)} low-value or duplicate result(s):")
+        for t in dropped:
+            print(f"   - {t[:70]}")
+    if not kept and articles:
+        print("Filter removed everything, so keeping the original results.")
+        return articles
+    return kept
+
+
 def fetch_news_for_topic(
     topic: str = "AI and Machine Learning",
     days_back: int = 7,
@@ -140,7 +192,7 @@ def fetch_news_for_topic(
     # 1. Primary Ingestion: DuckDuckGo Real-Time News Search
     try:
         ddgs = DDGS()
-        raw_news = list(ddgs.news(clean_topic, max_results=max_results))
+        raw_news = list(ddgs.news(clean_topic, max_results=max_results + 5))
         cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
 
 
@@ -182,9 +234,11 @@ def fetch_news_for_topic(
     if not articles:
         articles = _fetch_from_rss_fallback(clean_topic, days_back, kw_list, feeds, max_results)
 
-    # Sort most recent first
+    articles = _filter_articles(articles, clean_topic)
+
+    # Sort most recent first, keep the requested amount
     articles.sort(key=lambda a: a["published"], reverse=True)
-    return articles
+    return articles[:max_results]
 
 
 def fetch_articles(
@@ -211,5 +265,3 @@ if __name__ == "__main__":
     print(f"Retrieved {len(res)} articles.")
     for art in res[:3]:
         print(f"[{art['source']}] {art['title']} ({art['published']})")
-
-
