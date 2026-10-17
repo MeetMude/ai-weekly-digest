@@ -30,7 +30,7 @@ def _get_model():
         return None
     try:
         import google.generativeai as genai
-        genai.configure(api_key=api_key)
+        genai.configure(api_key=api_key, transport="rest")
         name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
         _model = genai.GenerativeModel(name)
         print(f"Gemini ready: {name}")
@@ -44,17 +44,38 @@ def _strip_html(raw_html: str) -> str:
     return re.sub(r"\s+", " ", clean).strip()
 
 
+_last_call = 0.0
+
+
+def _wait_for_slot():
+    """Free Gemini keys allow ~5 requests/minute, so space the calls out."""
+    global _last_call
+    gap = float(os.environ.get("GEMINI_MIN_INTERVAL", "13"))
+    wait = gap - (time.time() - _last_call)
+    if wait > 0:
+        time.sleep(wait)
+    _last_call = time.time()
+
+
 def _ask(prompt: str) -> str:
-    """Call Gemini with one retry. Returns '' on failure."""
+    """Call Gemini (paced, with retries). Returns '' if it keeps failing."""
     model = _get_model()
     if not model:
         return ""
-    for attempt in (1, 2):
+    for attempt in (1, 2, 3):
+        _wait_for_slot()
         try:
-            return model.generate_content(prompt).text.strip()
+            return model.generate_content(prompt, request_options={"timeout": 60}).text.strip()
         except Exception as e:
-            print(f"  Gemini call failed (attempt {attempt}): {e}")
-            time.sleep(5)
+            msg = str(e)
+            print(f"  Gemini call failed (attempt {attempt}): {msg[:120]}")
+            m = re.search(r"retry in ([\d.]+)s", msg)
+            if "429" in msg and m:
+                pause = min(float(m.group(1)) + 2, 90)
+                print(f"  Rate limit reached. Waiting {pause:.0f}s before retrying...")
+                time.sleep(pause)
+            else:
+                time.sleep(5)
     return ""
 
 
@@ -114,8 +135,11 @@ def summarize_article(article: dict) -> dict:
 def summarize_articles(articles: list[dict]) -> list[dict]:
     """Download full text, then summarize each article. Adds 'summary' and 'key_points'."""
     articles = add_full_text(articles)
-    for article in articles:
+    total = len(articles)
+    for i, article in enumerate(articles, start=1):
+        print(f"  Summarizing {i}/{total}: {article['title'][:60]}")
         summarize_article(article)
+    print("Writing topic overview...")
     return articles
 
 
