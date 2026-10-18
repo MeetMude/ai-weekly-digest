@@ -612,38 +612,104 @@
       }
     }
 
-    async function generateDigest() {
-      const btn = document.getElementById('generate-btn');
-      const status = document.getElementById('status');
-      const topic = document.getElementById('topic').value;
-      const days = document.getElementById('days').value;
-      const keywords = document.getElementById('keywords').value;
+    
+async function generateDigest() {
+    const btn = document.getElementById('generate-btn');
+    const status = document.getElementById('status');
 
-      btn.disabled = true;
-      status.className = 'working';
-      status.textContent = `Searching real-time news for "${topic}" and summarizing... this can take a moment.`;
+    const topic = document.getElementById('topic').value;
+    const days = document.getElementById('days').value;
+    const keywords = document.getElementById('keywords').value;
 
-      try {
+    btn.disabled = true;
+    status.className = 'working';
+    status.textContent = 'Starting digest generation...';
+
+    try {
         const res = await fetch('/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: `topic=${encodeURIComponent(topic)}&days=${encodeURIComponent(days)}&keywords=${encodeURIComponent(keywords)}`
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                topic: topic,
+                days: days,
+                keywords: keywords
+            })
         });
+
         const data = await res.json();
 
-        if (data.success) {
-          status.className = 'done';
-          status.innerHTML = `Done &mdash; ${data.article_count} article(s) compiled for "${data.topic}". <a href="${data.download_url}">Download the PDF</a>`;
-        } else {
-          throw new Error(data.error || 'Something went wrong.');
+        if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Could not start generation.');
         }
-      } catch (err) {
+
+        await pollDigestStatus(data.job_id);
+
+    } catch (err) {
         status.className = 'error';
         status.textContent = `Failed: ${err.message}`;
-      } finally {
         btn.disabled = false;
-      }
     }
+}
+
+
+async function pollDigestStatus(jobId) {
+    const btn = document.getElementById('generate-btn');
+    const status = document.getElementById('status');
+
+    try {
+        const res = await fetch(
+            `/api/generate-status/${encodeURIComponent(jobId)}`
+        );
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+            throw new Error(
+                data.error || 'Could not check job status.'
+            );
+        }
+
+        if (data.status === 'queued' || data.status === 'running') {
+            status.className = 'working';
+            status.textContent =
+                data.message || 'Generating your digest...';
+
+            setTimeout(() => pollDigestStatus(jobId), 2000);
+            return;
+        }
+
+        if (data.status === 'completed') {
+            status.className = 'done';
+            status.replaceChildren();
+
+            status.appendChild(document.createTextNode(
+                `Done — ${data.article_count} article(s) compiled for "${data.topic}". `
+            ));
+
+            const link = document.createElement('a');
+            link.href = data.download_url;
+            link.textContent = 'Download the PDF';
+            status.appendChild(link);
+
+        } else if (data.status === 'failed') {
+            status.className = 'error';
+            status.textContent =
+                `Failed: ${data.message || 'Generation failed.'}`;
+
+        } else {
+            throw new Error('Unexpected job status.');
+        }
+
+        btn.disabled = false;
+
+    } catch (err) {
+        status.className = 'error';
+        status.textContent = `Status check failed: ${err.message}`;
+        btn.disabled = false;
+    }
+}
 
     // Load feeds & active schedules on page init
     loadFeeds();
