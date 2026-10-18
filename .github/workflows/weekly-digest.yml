@@ -1,0 +1,38 @@
+name: Weekly digest
+
+on:
+  schedule:
+    # GitHub uses UTC. "30 3 * * 0" = every Sunday at 03:30 UTC = 09:00 in India (IST).
+    # Format: minute hour day-of-month month day-of-week (0 = Sunday)
+    - cron: "30 3 * * 0"
+  workflow_dispatch:          # adds a "Run workflow" button so you can test it any time
+    inputs:
+      topic:
+        description: "Topic for the digest"
+        default: "cricket"
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt requests
+
+      - name: Build the digest and email it
+        env:
+          TOPIC: ${{ inputs.topic || 'cricket' }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3-flash-preview
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          PYTHONUNBUFFERED: "1"
+        run: python scheduled_digest.py --topic "$TOPIC" --days 7
